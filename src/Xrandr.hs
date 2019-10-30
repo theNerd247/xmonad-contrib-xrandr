@@ -156,6 +156,13 @@ setSecondaryPositions' :: Position -> ScreenF Screens -> Screens
 setSecondaryPositions' p (Secondary n c _ s) = secondary n c p s
 setSecondaryPositions' _ x = Fix x
 
+allScreensOff :: Screens -> Screens
+allScreensOff = cata allScreensOff'
+
+allScreensOff' :: ScreenF Screens -> Screens
+allScreensOff' (Secondary n c _ s) = disabled n c s
+allScreensOff' x = Fix x
+
 allScreensLeft :: Screens -> Screens
 allScreensLeft = setSecondaryPositions LeftOf
 
