@@ -4,13 +4,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-
 module Xrandr where
 
 import Control.Applicative
 import Control.Arrow
 import Control.Monad ((>=>))
-import Data.Attoparsec.Text
+
 import Data.Bifunctor (bimap)
 import Data.Foldable (foldMap)
 import Data.Functor.Foldable
@@ -20,7 +19,6 @@ import Data.Monoid
 import Control.Monad
 import Data.String
 import Numeric.Natural
-import Prelude hiding (takeWhile, take)
 import Shelly (shelly, run, run_)
 import qualified Data.Text as T
 
@@ -43,96 +41,6 @@ import qualified Data.Text as T
 --  * 
 
 -- | represents the physical layout of those screens which are connected
-data ScreenF b = 
-    Primary      OutputName Config
-  | Secondary    OutputName Config Position b
-  | Disabled     OutputName Config b
-  | Disconnected OutputName b
-  deriving (Show, Functor)
-
-type Screens = Fix ScreenF
-
-data Position =
-    RightOf
-  | LeftOf 
-  | Above  
-  | Below  
-  | SameAs 
-  deriving (Show)
-
-newtype OutputName = OutputName { name :: T.Text } 
-  deriving (Show, Eq, Ord, IsString)
-
-data Config = Config
-  { rotation  :: Rotation
-  , modes     :: Modes
-  } deriving (Show, Eq, Ord)
-
-data Zipper a = Zipper
-  { focus :: a
-  , next :: [a]
-  , prev :: [a]
-  } deriving (Show, Eq, Ord, Functor)
-
-left :: Zipper a -> Zipper a
-left x@(Zipper _ _ []) = x
-left (Zipper n ns (p:ps)) = Zipper p (n:ns) ps
-
-right :: Zipper a -> Zipper a
-right x@(Zipper _ [] _) = x
-right (Zipper p (n:ns) ps) = Zipper n ns (p:ps)
-
-moveUntil :: (a -> a) -> (a -> Bool) -> a -> a
-moveUntil move p = hylo (either id id) (moveIf <*> p) 
-  where
-    moveIf a True  = Left a
-    moveIf a False = Right . move $ a
-
-type Modes = Zipper Mode
-
-newtype Mode = Mode { modeName :: (Natural, Natural) }
-  deriving (Show, Eq, Ord)
-
-data Rotation =
-    Normal
-  | RotateLeft
-  | RotateRight
-  | Inverted
-  deriving (Show, Eq, Ord)
-
-type Cmd = [T.Text]
-
-class ToCmd a where
-  buildCmd :: a -> Cmd
-
-instance ToCmd OutputName where
-  buildCmd n = ["--output", name n]
-
-instance ToCmd Config where
-  buildCmd m = 
-       (buildCmd . modes $ m)
-    <> (buildCmd . rotation $ m)
-    
-instance ToCmd Rotation where
-  buildCmd x = ["--rotate", rotateOption x]
-    where
-      rotateOption Normal      = "normal"
-      rotateOption RotateLeft  = "left"
-      rotateOption RotateRight = "right"
-      rotateOption Inverted    = "inverted"
-
-instance (ToCmd a) => ToCmd (Maybe a) where
-  buildCmd = maybe mempty buildCmd
-
-instance (ToCmd a) => ToCmd (Zipper a) where
-  buildCmd = buildCmd . focus
-
-instance ToCmd Mode where
-  buildCmd m =
-    [ "--mode"
-    , (T.pack . show . modeX $ m) <> "x" <> (T.pack . show . modeY $ m)
-    ]
-
 modeX = fst . modeName
 
 modeY = snd . modeName
@@ -196,153 +104,6 @@ nextOutputName' (Disconnected _ n) = n
 
 configWithNormalRotation :: Modes -> Config
 configWithNormalRotation = Config Normal
-
-data PreList a = 
-    EndoVal a
-  | EndoF (a -> a)
-
-instance Semigroup (PreList a) where
-   (EndoVal s) <> (EndoVal _) = EndoVal s
-   (EndoF f)  <> (EndoF g)  = EndoF $ g . f
-   (EndoVal s) <> (EndoF f)  = EndoVal $ f s
-   (EndoF f)  <> (EndoVal s) = EndoVal $ f s
-
-instance Monoid (PreList a) where
-  mempty = EndoF id
-
-unPrelist (EndoVal a) = Just a
-unPrelist (EndoF _) = Nothing
-
-manyPrelist :: Parser (PreList a) -> Parser a
-manyPrelist = maybe empty pure <=< (fmap (unPrelist . mconcat) . many)
-
-fixedEndoVal = EndoVal . Fix
-fixedEndoF f = EndoF $ Fix . f
-
-type SC = PreList Screens
-
--- | NOTE: you may need to include a *> ignoreRestOfLine or endOfInput in here....
---parseScreens :: T.Text -> Either String Screens
-parseScreens = parseOnly $ screenTexts
--- DO NOT add endOfInput here. We don't want the parser to match to entire output
--- from xrandr; only just enough text to determine the shape of the screens
-
-screenTexts :: Parser Screens
-screenTexts = ignoreRestOfLine *> manyPrelist screenText
-
-screenText :: Parser SC
-screenText = 
-      (fixedEndoVal <$> isPrimary)
-  <|> (fixedEndoF <$> isSecondary)
-  <|> (fixedEndoF <$> isDisabled)
-  <|> (fixedEndoF <$> isDisconnected)
-  
-isDisconnected :: Parser (b -> ScreenF b)
-isDisconnected = Disconnected <$> disconnectedOutputName
-
-isPrimary :: Parser (ScreenF b)
-isPrimary = 
-  Primary
-  <$> connectedOutputNameAndPrimary
-  <*> (configTextWith enabledModesText)
-
-isSecondary :: Parser (b -> ScreenF b)
-isSecondary =
-  Secondary
-  <$> connectedOutputNameAndNotPrimary
-  <*> (configTextWith enabledModesText)
-  <*> (pure LeftOf)
-
-isDisabled :: Parser (b -> ScreenF b)
-isDisabled = 
-  Disabled
-  <$> connectedOutputNameAndNotPrimary
-  <*> (configTextWith disabledModesText)
-
-disconnectedOutputName = outputNameWith "disconnected" isNotPrimaryText
-
-connectedOutputNameAndPrimary = connectedOutputName isPrimaryText
-
-connectedOutputNameAndNotPrimary = connectedOutputName isNotPrimaryText
-
-connectedOutputName :: Parser a -> Parser OutputName
-connectedOutputName = outputNameWith "connected"
-
-isPrimaryText = skipSpace *> string "primary" <* skipSpace
-
-isNotPrimaryText = char ' ' *> pure () <|> endOfLine
-
-outputNameWith :: T.Text -> Parser a -> Parser OutputName
-outputNameWith connection primary =
-  outputNameText
-  <* skipSpace
-  <* string connection
-  <* primary
-  <* ignoreRestOfLine
-
-outputNameText :: Parser OutputName
-outputNameText = OutputName <$> takeTill (==' ')
-
-configTextWith :: Parser Modes -> Parser Config
-configTextWith = fmap configWithNormalRotation
-
-enabledModesText = modesTextWith enabledModeLine
-
-disabledModesText = modesTextWith preferredModeLine
-
-modesTextWith :: Parser Mode -> Parser Modes
-modesTextWith focusedMode = 
-  (flip Zipper)
-  <$> (many disabledModeLine)
-  <*> focusedMode
-  <*> (many disabledModeLine)
-
-disabledModeLine :: Parser Mode
-disabledModeLine = modeLineWith $ isDisabledMode
-
-enabledModeLine :: Parser Mode
-enabledModeLine = modeLineWith isEnabledMode
-
-preferredModeLine :: Parser Mode
-preferredModeLine = modeLineWith isPreferredMode
-
-modeLineWith :: Parser () -> Parser Mode
-modeLineWith enabled = 
-  skipSpace
-  *> modeText 
-  <*  skipSpace
-  <*  (natText *> char '.' *> natText)
-  <* enabled
-  <* ignoreRestOfLine
-
-modeText :: Parser Mode
-modeText = 
-  ((Mode .) <$> (,))
-  <$> natText 
-  <* char 'x' 
-  <*> natText
-  <* option () (char 'i' *> pure ())
-
-isEnabledMode :: Parser ()
-isEnabledMode = char '*' *> pure ()
-
-isDisabledMode :: Parser ()
-isDisabledMode = string "  " *> pure ()
-
-isPreferredMode :: Parser ()
-isPreferredMode = string " +" *> pure ()
-
-natText :: Parser Natural
-natText = read <$> many1 digit <?> "natText"
-
-ignoreRestOfLine :: Parser ()
-ignoreRestOfLine = takeTill isEndOfLine *> endOfLine
-
-optionalFlag :: (Monoid a) => a -> Parser b -> Parser a
-optionalFlag a p = flag a p <|> pure mempty
-
-flag :: a -> Parser b -> Parser a
-flag a p = p *> pure a
 
 spawnXrandr :: (Screens -> Screens) -> IO ()
 spawnXrandr f = 
