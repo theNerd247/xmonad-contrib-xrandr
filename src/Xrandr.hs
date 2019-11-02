@@ -2,11 +2,7 @@
 
 module Xrandr 
   ( spawnXrandr
-  , allScreensOff
-  , allScreensLeft
-  , allScreensRight
-  , setSecondaryPositions
-  , autoEnable
+  , module Xrandr.Types
   )
 where
 
@@ -14,6 +10,7 @@ import Control.Monad ((>=>))
 import Shelly (shelly, run, run_)
 import qualified Data.Text as T
 
+import Xrandr.Cmd
 import Xrandr.Types
 import Xrandr.Parser
 

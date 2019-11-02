@@ -1,126 +1,91 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Xrandr.Types
-  ( 
-  -- | primitives for screens
-    primary
-  , secondary
-  , disabled
-  , disconnected
-  , Position (..)
+  ( Position (..)
   , Rotation (..)
   , OutputName (..)
   , Config (..)
   , Mode (..)
   , Modes
-  , Cmd
   , Screens
-  , modeX
-  , modeY
-  -- | default config
-  , configWithNormalRotation
-  -- | screens combinators
-  , autoEnable
-  , setSecondaryPositions
-  , allScreensOff
+  , disableSecondary
+  , allSecondaryOff
   , allScreensLeft
   , allScreensRight
-  , makeCmd
-  , buildCmd
+  , nextScreenRotation
+  , prevScreenRotation
+  , primary
+  , secondary
+  , disabled
+  , disconnected
+  , configWithNormalRotation
+  , autoEnable
+  , modifyConfig
+  , modifyPosition
+  , modifyRotation
+  , modifyRotationOfScreen
+  , onAllScreens
+  , nextOutputName
   )
 where
 
 import Xrandr.Types.Internal
-import Data.Functor.Foldable
-import Xrandr.Cmd.Class
-import Data.Zipper
-import qualified Data.Text as T
-
-instance ToCmd OutputName where
-  buildCmd n = ["--output", name n]
-
-instance ToCmd Config where
-  buildCmd m = 
-       (buildCmd . modes $ m)
-    <> (buildCmd . rotation $ m)
-    
-instance ToCmd Mode where
-  buildCmd m =
-    [ "--mode"
-    , (T.pack . show . modeX $ m) <> "x" <> (T.pack . show . modeY $ m)
-    ]
-
-instance ToCmd Rotation where
-  buildCmd x = ["--rotate", rotateOption x]
-    where
-      rotateOption Normal      = "normal"
-      rotateOption RotateLeft  = "left"
-      rotateOption RotateRight = "right"
-      rotateOption Inverted    = "inverted"
-
-instance (ToCmd a) => ToCmd (Zipper a) where
-  buildCmd = buildCmd . focus
-
-modeX = fst . modeName
-
-modeY = snd . modeName
-
-primary a b       = Fix $ Primary a b
-secondary a b c d = Fix $ Secondary a b c d
-disabled a b c    = Fix $ Disabled a b c
-disconnected a b  = Fix $ Disconnected a b
-
-autoEnable :: Screens -> Screens
-autoEnable = cata autoEnable'
-
-autoEnable' :: ScreenF Screens -> Screens
-autoEnable' (Disabled n c s) = secondary n c LeftOf s
-autoEnable' x = Fix x
-
-setSecondaryPositions :: Position -> Screens -> Screens
-setSecondaryPositions = cata . setSecondaryPositions'
-
-setSecondaryPositions' :: Position -> ScreenF Screens -> Screens
-setSecondaryPositions' p (Secondary n c _ s) = secondary n c p s
-setSecondaryPositions' _ x = Fix x
-
-allScreensOff :: Screens -> Screens
-allScreensOff = cata allScreensOff'
-
-allScreensOff' :: ScreenF Screens -> Screens
-allScreensOff' (Secondary n c _ s) = disabled n c s
-allScreensOff' x = Fix x
-
-allScreensLeft :: Screens -> Screens
-allScreensLeft = setSecondaryPositions LeftOf
-
-allScreensRight :: Screens -> Screens
-allScreensRight = setSecondaryPositions RightOf
 
 configWithNormalRotation :: Modes -> Config
 configWithNormalRotation = Config Normal
 
-makeCmd :: Screens -> Cmd
-makeCmd = para buildCmd'
+primary a b       = toScreens $ Primary a b
+secondary a b c d = toScreens $ Secondary a b c d
+disabled a b c    = toScreens $ Disabled a b c
+disconnected a b  = toScreens $ Disconnected a b
 
-buildCmd' :: ScreenF (Screens, Cmd) -> Cmd
-buildCmd' (Primary n c)                     =         (buildCmd n) <> (buildCmd c) <> ["--primary"]
-buildCmd' (Secondary n c p (screens, cmds)) = cmds <> (buildCmd n) <> (buildCmd c) <> [positionArg p, name $ nextOutputName screens]
-buildCmd' (Disabled n _ (_, cmds))          = cmds <> (buildCmd n)                 <> ["--off"]
-buildCmd' (Disconnected n (_, cmds))        = cmds <> (buildCmd n)                 <> ["--off"]
+allSecondaryOff = onAllScreens disableSecondary
 
-positionArg :: Position -> T.Text
-positionArg LeftOf  = "--left-of"
-positionArg RightOf = "--right-of"
-positionArg Above   = "--above"
-positionArg Below   = "--below"
-positionArg SameAs  = "--same-as"
+allScreensLeft = onAllScreens $ modifyPosition $ const LeftOf
 
-nextOutputName :: Screens -> OutputName
-nextOutputName = cata nextOutputName'
+allScreensRight = onAllScreens $ modifyPosition $ const RightOf
 
-nextOutputName' :: ScreenF OutputName -> OutputName
-nextOutputName' (Primary n _)      = n
-nextOutputName' (Secondary n _ _ _)  = n
-nextOutputName' (Disabled _ _ n)   = n
-nextOutputName' (Disconnected _ n) = n
+nextScreenRotation n = onAllScreens $ modifyRotationOfScreen n succ
+
+prevScreenRotation n = onAllScreens $ modifyRotationOfScreen n pred
+
+autoEnable :: ScreenF a -> ScreenF a
+autoEnable (Disabled n c s) = Secondary n c LeftOf s
+autoEnable x = x
+
+disableSecondary :: ScreenF a -> ScreenF a
+disableSecondary (Secondary n c _ s) = Disabled n c s
+disableSecondary x = x
+
+modifyRotationOfScreen :: OutputName -> (Rotation -> Rotation) -> ScreenF a -> ScreenF a
+modifyRotationOfScreen n = modifyScreenAt n . modifyRotation
+
+modifyRotation :: (Rotation -> Rotation) -> ScreenF a -> ScreenF a
+modifyRotation f = modifyConfig $ \c -> c { rotation = f $ rotation c }
+
+modifyConfig :: (Config -> Config) -> ScreenF a -> ScreenF a
+modifyConfig f = onSecondary $ \(c, p) -> (f c, p)
+
+modifyPosition :: (Position -> Position) -> ScreenF a -> ScreenF a
+modifyPosition f = onSecondary $ \(c, p) -> (c, f p)
+
+onSecondary :: ((Config, Position) -> (Config, Position)) -> ScreenF a -> ScreenF a
+onSecondary f (Secondary n c p s) = let (c', p') = f (c,p) in Secondary n c' p' s
+onSecondary _ x = x
+
+modifyScreenAt :: OutputName -> (ScreenF a -> ScreenF a) -> ScreenF a -> ScreenF a
+modifyScreenAt name f x
+  | getOutputName x == name = f x
+  | otherwise               = x
+
+getOutputName :: ScreenF a -> OutputName
+getOutputName (Primary n _)       = n
+getOutputName (Secondary n _ _ _) = n
+getOutputName (Disabled n _ _)    = n
+getOutputName (Disconnected n _)  = n
+
+nextOutputName :: ScreenF OutputName -> OutputName
+nextOutputName (Primary n _)       = n
+nextOutputName (Secondary n _ _ _) = n
+nextOutputName (Disabled _ _ n)    = n
+nextOutputName (Disconnected _ n)  = n
