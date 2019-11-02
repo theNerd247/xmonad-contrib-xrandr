@@ -1,6 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Xrandr where
+module Xrandr 
+  ( spawnXrandr
+  , allScreensOff
+  , allScreensLeft
+  , allScreensRight
+  , setSecondaryPositions
+  )
+where
 
 import Control.Monad ((>=>))
 import Shelly (shelly, run, run_)
