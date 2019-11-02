@@ -22,6 +22,7 @@ module Xrandr.Types
   -- | screens combinators
   , autoEnable
   , setSecondaryPositions
+  , modifyPositions
   , allScreensOff
   , allScreensLeft
   , allScreensRight
@@ -86,6 +87,12 @@ modifyPositions = cata . modifyPositions'
 modifyPositions' :: (Position -> Position) -> ScreenF Screens -> Screens
 modifyPositions' f (Secondary n c p s) = secondary n c (f p) s
 modifyPositions' _ x = Fix x
+
+modifyRotation :: (Rotation -> Rotation) -> ScreenF Screens -> Screens
+
+onSecondary :: (ScreenF a -> ScreenF a) -> ScreenF a -> ScreenF a
+onSecondary f x@(Secondary _ _ _ _) = f x
+onSecondary _ x = x
 
 allScreensOff :: Screens -> Screens
 allScreensOff = cata allScreensOff'
