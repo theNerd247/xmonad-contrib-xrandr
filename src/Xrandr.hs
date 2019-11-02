@@ -6,6 +6,7 @@ module Xrandr
   , allScreensLeft
   , allScreensRight
   , setSecondaryPositions
+  , autoEnable
   )
 where
 
