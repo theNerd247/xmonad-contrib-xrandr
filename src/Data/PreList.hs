@@ -2,7 +2,7 @@
 -- the world
 module Data.PreList 
   ( PreList (..)
-  , unPrelist
+  , applyPrelist
   )
 where
 

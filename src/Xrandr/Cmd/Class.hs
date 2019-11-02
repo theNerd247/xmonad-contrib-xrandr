@@ -1,5 +1,6 @@
-module Xrandr.Cmd 
+module Xrandr.Cmd.Class 
   ( Cmd
+  , ToCmd (..)
   )
 where
 

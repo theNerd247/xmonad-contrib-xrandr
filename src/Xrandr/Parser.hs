@@ -1,11 +1,18 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
+
 module Xrandr.Parser 
   ( parseScreens
   )
 where
 
 import Data.Attoparsec.Text
-import Xrandr.Types.Internal
+import Xrandr.Types
 import Data.PreList
+import Numeric.Natural (Natural)
+import Control.Applicative
+import Data.Zipper
+import qualified Data.Text as T
 
 parseScreens = parseOnly $ screenTexts
 -- DO NOT add endOfInput here. We don't want the parser to match to entire output
@@ -24,7 +31,7 @@ screenText =
   <|> (EndoF   <$> isDisabled)
   <|> (EndoF   <$> isDisconnected)
   
-isDisconnected :: Parser (b -> Screens)
+isDisconnected :: Parser (Screens -> Screens)
 isDisconnected = disconnected <$> disconnectedOutputName
 
 isPrimary :: Parser (Screens)
@@ -33,23 +40,26 @@ isPrimary =
   <$> connectedOutputNameAndPrimary
   <*> (configTextWith enabledModesText)
 
-isSecondary :: Parser (b -> Screens)
+isSecondary :: Parser (Screens -> Screens)
 isSecondary =
   secondary
   <$> connectedOutputNameAndNotPrimary
   <*> (configTextWith enabledModesText)
   <*> (pure LeftOf)
 
-isDisabled :: Parser (b -> Screens)
+isDisabled :: Parser (Screens -> Screens)
 isDisabled = 
   disabled
   <$> connectedOutputNameAndNotPrimary
   <*> (configTextWith disabledModesText)
 
+disconnectedOutputName :: Parser OutputName 
 disconnectedOutputName = outputNameWith "disconnected" isNotPrimaryText
 
+connectedOutputNameAndPrimary :: Parser OutputName
 connectedOutputNameAndPrimary = connectedOutputName isPrimaryText
 
+connectedOutputNameAndNotPrimary :: Parser OutputName
 connectedOutputNameAndNotPrimary = connectedOutputName isNotPrimaryText
 
 connectedOutputName :: Parser a -> Parser OutputName
