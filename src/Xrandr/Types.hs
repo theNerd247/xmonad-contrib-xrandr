@@ -78,11 +78,14 @@ autoEnable' (Disabled n c s) = secondary n c LeftOf s
 autoEnable' x = Fix x
 
 setSecondaryPositions :: Position -> Screens -> Screens
-setSecondaryPositions = cata . setSecondaryPositions'
+setSecondaryPositions = modifyPositions . const
 
-setSecondaryPositions' :: Position -> ScreenF Screens -> Screens
-setSecondaryPositions' p (Secondary n c _ s) = secondary n c p s
-setSecondaryPositions' _ x = Fix x
+modifyPositions :: (Position -> Position) -> Screens -> Screens
+modifyPositions = cata . modifyPositions'
+
+modifyPositions' :: (Position -> Position) -> ScreenF Screens -> Screens
+modifyPositions' f (Secondary n c p s) = secondary n c (f p) s
+modifyPositions' _ x = Fix x
 
 allScreensOff :: Screens -> Screens
 allScreensOff = cata allScreensOff'

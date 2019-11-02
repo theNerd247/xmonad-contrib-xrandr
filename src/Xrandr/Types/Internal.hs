@@ -35,7 +35,7 @@ data Position =
   | Above  
   | Below  
   | SameAs 
-  deriving (Show)
+  deriving (Show, Eq, Ord, Enum)
 
 newtype OutputName = OutputName { name :: T.Text } 
   deriving (Show, Eq, Ord, IsString)
@@ -55,4 +55,4 @@ data Rotation =
   | RotateLeft
   | RotateRight
   | Inverted
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Enum)
