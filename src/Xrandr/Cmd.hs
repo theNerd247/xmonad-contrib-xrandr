@@ -1,10 +1,14 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Xrandr.Cmd
   ( makeCmd
+  , Cmd
   )
 where
 
 import Xrandr.Cmd.Class
 import Xrandr.Types
+import Xrandr.Types.Internal
 import Data.Zipper
 import qualified Data.Text as T
 
@@ -37,7 +41,7 @@ makeCmd = withScreens makeCommands'
 
 makeCommands' :: ScreenF (Screens, Cmd) -> Cmd
 makeCommands' (Primary n c)                     =         (buildCmd n) <> (buildCmd c) <> ["--primary"]
-makeCommands' (Secondary n c p (screens, cmds)) = cmds <> (buildCmd n) <> (buildCmd c) <> [positionArg p, name $ nextOutputName screens]
+makeCommands' (Secondary n c p (screens, cmds)) = cmds <> (buildCmd n) <> (buildCmd c) <> [positionArg p, name $ fromScreens nextOutputName screens]
 makeCommands' (Disabled n _ (_, cmds))          = cmds <> (buildCmd n)                 <> ["--off"]
 makeCommands' (Disconnected n (_, cmds))        = cmds <> (buildCmd n)                 <> ["--off"]
 
