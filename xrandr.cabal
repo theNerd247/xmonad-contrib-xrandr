@@ -18,7 +18,8 @@ library
       , Xrandr.Types.Internal
       , Xrandr.Parser
       , Xrandr.Types
-
+      , Xrandr.Cmd.Class
+      , Xrandr.Cmd
   build-depends:       base
                      , recursion-schemes
                      , shelly
