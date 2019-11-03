@@ -33,7 +33,7 @@ instance ToCmd Rotation where
       rotateOption RotateRight = "right"
       rotateOption Inverted    = "inverted"
 
-makeCmd = fromScreens makeCommands'
+makeCmd = withScreens makeCommands'
 
 makeCommands' :: ScreenF (Screens, Cmd) -> Cmd
 makeCommands' (Primary n c)                     =         (buildCmd n) <> (buildCmd c) <> ["--primary"]
