@@ -78,21 +78,8 @@ autoEnable' :: ScreenF Screens -> Screens
 autoEnable' (Disabled n c s) = secondary n c LeftOf s
 autoEnable' x = Fix x
 
-setSecondaryPositions :: Position -> Screens -> Screens
-setSecondaryPositions = modifyPositions . const
-
-modifyPositions :: (Position -> Position) -> Screens -> Screens
-modifyPositions = cata . modifyPositions'
-
-modifyPositions' :: (Position -> Position) -> ScreenF Screens -> Screens
-modifyPositions' f (Secondary n c p s) = secondary n c (f p) s
-modifyPositions' _ x = Fix x
-
-modifyRotation :: (Rotation -> Rotation) -> ScreenF Screens -> Screens
-
-onSecondary :: (ScreenF a -> ScreenF a) -> ScreenF a -> ScreenF a
-onSecondary f x@(Secondary _ _ _ _) = f x
-onSecondary _ x = x
+-- modifyRotation :: (Rotation -> Rotation) -> ScreenF Screens -> Screens
+-- modifyRotation f (Secondary n c _ s) =  
 
 allScreensOff :: Screens -> Screens
 allScreensOff = cata allScreensOff'
@@ -106,6 +93,16 @@ allScreensLeft = setSecondaryPositions LeftOf
 
 allScreensRight :: Screens -> Screens
 allScreensRight = setSecondaryPositions RightOf
+
+setSecondaryPositions :: Position -> Screens -> Screens
+setSecondaryPositions = modifyPositions . const
+
+modifyPositions :: (Position -> Position) -> Screens -> Screens
+modifyPositions = cata . modifyPositions'
+
+modifyPositions' :: (Position -> Position) -> ScreenF Screens -> Screens
+modifyPositions' f (Secondary n c p s) = secondary n c (f p) s
+modifyPositions' _ x = Fix x
 
 configWithNormalRotation :: Modes -> Config
 configWithNormalRotation = Config Normal
