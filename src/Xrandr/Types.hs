@@ -25,6 +25,7 @@ module Xrandr.Types
   , modifyRotation
   , modifyRotationOfScreen
   , onAllScreens
+  , nextOutputName
   )
 where
 
