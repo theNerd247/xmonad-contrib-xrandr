@@ -23,6 +23,7 @@ module Xrandr.Types
   , autoEnable
   , setSecondaryPositions
   , modifyPositions
+  , modifyConfigs
   , allScreensOff
   , allScreensLeft
   , allScreensRight
@@ -97,12 +98,23 @@ allScreensRight = setSecondaryPositions RightOf
 setSecondaryPositions :: Position -> Screens -> Screens
 setSecondaryPositions = modifyPositions . const
 
-modifyPositions :: (Position -> Position) -> Screens -> Screens
-modifyPositions = cata . modifyPositions'
+modifyPositions :: (Position -> Position) -> ScreenF a -> ScreenF a
+modifyPositions f = onSecondary $ \(n, c, p) -> (n, c, f p)
 
-modifyPositions' :: (Position -> Position) -> ScreenF Screens -> Screens
-modifyPositions' f (Secondary n c p s) = secondary n c (f p) s
-modifyPositions' _ x = Fix x
+modifyRotation :: (Rotation -> Rotation) -> ScreenF a -> ScreenF a
+modifyRotation f = modifyConfigs $ \c -> c { rotation = f $ rotation c }
+
+modifyConfigs :: (Config -> Config) -> ScreenF a -> ScreenF a
+modifyConfigs f = onSecondary $ \(n, c, p) -> (n, f c, p)
+
+onSecondary :: (OutputName, Config, Position) -> (OutputName, Config, Position) -> ScreenF a -> ScreenF a
+onSecondary f (Secondary n c p s) = let (n', c', p') = f (n,c,p) in Secondary n' c' p' s
+onSecondary _ x = x
+
+modifyScreenAt :: (ScreenF a -> ScreenF a) -> OutputName -> ScreensF a -> ScreenF a
+modifyScreenAt f name x
+  | getOutputName x == name = f x
+  | otherwise               = x
 
 configWithNormalRotation :: Modes -> Config
 configWithNormalRotation = Config Normal
@@ -127,7 +139,13 @@ nextOutputName :: Screens -> OutputName
 nextOutputName = cata nextOutputName'
 
 nextOutputName' :: ScreenF OutputName -> OutputName
-nextOutputName' (Primary n _)      = n
-nextOutputName' (Secondary n _ _ _)  = n
-nextOutputName' (Disabled _ _ n)   = n
-nextOutputName' (Disconnected _ n) = n
+nextOutputName' (Primary n _)       = n
+nextOutputName' (Secondary n _ _ _) = n
+nextOutputName' (Disabled _ _ n)    = n
+nextOutputName' (Disconnected _ n)  = n
+
+getOutputName :: ScreenF a -> OutputName
+getOutputName (Primary n _)       = n
+getOutputName (Secondary n _ _ _) = n
+getOutputName (Disabled n _ _)    = n
+getOutputName (Disconnected n _)  = n
