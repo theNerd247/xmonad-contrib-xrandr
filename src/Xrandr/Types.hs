@@ -1,19 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Xrandr.Types
-  ( 
-  -- | primitives for screens
-    primary
-  , secondary
-  , disabled
-  , disconnected
-  , Position (..)
+  ( Position (..)
   , Rotation (..)
   , OutputName (..)
   , Config (..)
   , Mode (..)
   , Modes
-  , Cmd
   , Screens
   , disableSecondary
   , allSecondaryOff
@@ -21,22 +14,16 @@ module Xrandr.Types
   , allScreensRight
   , nextScreenRotation
   , prevScreenRotation
-  , configWithNormalRotation
-  , makeCmd
   , primary
   , secondary
   , disabled
   , disconnected
-  -- | default config
   , configWithNormalRotation
-  -- | screens combinators
   , autoEnable
   , modifyConfig
   , modifyPosition
   , modifyRotation
   , modifyRotationOfScreen
-  , disableSecondary
-  , makeCmd
   , onAllScreens
   )
 where

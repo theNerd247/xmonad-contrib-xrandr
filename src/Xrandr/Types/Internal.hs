@@ -16,6 +16,7 @@ module Xrandr.Types.Internal
   , toScreens
   , fromScreens
   , withScreens 
+  , onAllScreens
   )
 where
 
@@ -74,3 +75,6 @@ withScreens = para
 
 fromScreens :: (ScreenF a -> a) -> Screens -> a
 fromScreens = cata
+
+onAllScreens :: (ScreenF Screens -> ScreenF Screens) -> Screens -> Screens
+onAllScreens = fromScreens . (toScreens .)
