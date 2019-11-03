@@ -11,14 +11,30 @@ module Xrandr.Types.Internal
   , OutputName (..)
   , Modes
   , Mode (..)
+  , buildCmd
+  , modeX
+  , modeY
+  -- | default config
+  , configWithNormalRotation
+  -- | screens combinators
+  , autoEnable
+  , setSecondaryPositions
+  , modifyPositions
+  , modifyConfigs
+  , allScreensOff
+  , allScreensLeft
+  , allScreensRight
+  , makeCmd
+  , buildCmd
   )
 where
 
+import Data.Functor.Foldable
 import Data.String (IsString)
 import Data.Zipper
-import Data.Functor.Foldable
-import qualified Data.Text as T
 import Numeric.Natural
+import Xrandr.Cmd.Class
+import qualified Data.Text as T
 
 data ScreenF b = 
     Primary      OutputName Config
@@ -91,28 +107,31 @@ secondary a b c d = Fix $ Secondary a b c d
 disabled a b c    = Fix $ Disabled a b c
 disconnected a b  = Fix $ Disconnected a b
 
-autoEnable' :: ScreenF Screens -> Screens
-autoEnable' (Disabled n c s) = secondary n c LeftOf s
-autoEnable' x = Fix x
+autoEnable :: ScreenF Screens -> Screens
+autoEnable (Disabled n c s) = secondary n c LeftOf s
+autoEnable x = Fix x
 
-allScreensOff' :: ScreenF Screens -> Screens
-allScreensOff' (Secondary n c _ s) = disabled n c s
-allScreensOff' x = Fix x
+allScreensOff :: ScreenF Screens -> Screens
+allScreensOff (Secondary n c _ s) = disabled n c s
+allScreensOff x = Fix x
 
 setSecondaryPositions :: Position -> ScreenF a -> ScreenF a
 setSecondaryPositions = modifyPositions . const
 
-modifyPositions :: (Position -> Position) -> ScreenF a -> ScreenF a
-modifyPositions f = onSecondary $ \(n, c, p) -> (n, c, f p)
+modifyRotationOfScreen :: OutputName -> (Rotation -> Rotation) -> ScreenF a -> ScreenF a
+modifyRotationOfScreen n = modifyScreenAt n . modifyRotation
 
 modifyRotation :: (Rotation -> Rotation) -> ScreenF a -> ScreenF a
-modifyRotation f = modifyConfigs $ \c -> c { rotation = f $ rotation c }
+modifyRotation f = modifyConfig $ \c -> c { rotation = f $ rotation c }
 
-modifyConfigs :: (Config -> Config) -> ScreenF a -> ScreenF a
-modifyConfigs f = onSecondary $ \(n, c, p) -> (n, f c, p)
+modifyConfig :: (Config -> Config) -> ScreenF a -> ScreenF a
+modifyConfig f = onSecondary $ \(c, p) -> (f c, p)
 
-onSecondary :: (OutputName, Config, Position) -> (OutputName, Config, Position) -> ScreenF a -> ScreenF a
-onSecondary f (Secondary n c p s) = let (n', c', p') = f (n,c,p) in Secondary n' c' p' s
+modifyPosition :: (Position -> Position) -> ScreenF a -> ScreenF a
+modifyPosition f = onSecondary $ \(c, p) -> (c, f p)
+
+onSecondary :: (Config, Position) -> (Config, Position) -> ScreenF a -> ScreenF a
+onSecondary f (Secondary n c p s) = let (c', p') = f (c,p) in Secondary n' c' p' s
 onSecondary _ x = x
 
 modifyScreenAt :: (ScreenF a -> ScreenF a) -> OutputName -> ScreensF a -> ScreenF a
@@ -129,11 +148,14 @@ getOutputName (Secondary n _ _ _) = n
 getOutputName (Disabled n _ _)    = n
 getOutputName (Disconnected n _)  = n
 
-buildCmd' :: ScreenF (Screens, Cmd) -> Cmd
-buildCmd' (Primary n c)                     =         (buildCmd n) <> (buildCmd c) <> ["--primary"]
-buildCmd' (Secondary n c p (screens, cmds)) = cmds <> (buildCmd n) <> (buildCmd c) <> [positionArg p, name $ nextOutputName screens]
-buildCmd' (Disabled n _ (_, cmds))          = cmds <> (buildCmd n)                 <> ["--off"]
-buildCmd' (Disconnected n (_, cmds))        = cmds <> (buildCmd n)                 <> ["--off"]
+makeCmd :: Screens -> Cmd
+makeCmd = para buildCmd
+
+buildCmd :: ScreenF (Screens, Cmd) -> Cmd
+buildCmd (Primary n c)                     =         (buildCmd n) <> (buildCmd c) <> ["--primary"]
+buildCmd (Secondary n c p (screens, cmds)) = cmds <> (buildCmd n) <> (buildCmd c) <> [positionArg p, name $ nextOutputName screens]
+buildCmd (Disabled n _ (_, cmds))          = cmds <> (buildCmd n)                 <> ["--off"]
+buildCmd (Disconnected n (_, cmds))        = cmds <> (buildCmd n)                 <> ["--off"]
 
 positionArg :: Position -> T.Text
 positionArg LeftOf  = "--left-of"
@@ -142,8 +164,14 @@ positionArg Above   = "--above"
 positionArg Below   = "--below"
 positionArg SameAs  = "--same-as"
 
+nextOutputName :: Screens -> OutputName
+nextOutputName = cata nextOutputName'
+
 nextOutputName' :: ScreenF OutputName -> OutputName
 nextOutputName' (Primary n _)       = n
 nextOutputName' (Secondary n _ _ _) = n
 nextOutputName' (Disabled _ _ n)    = n
 nextOutputName' (Disconnected _ n)  = n
+
+runScreens :: (ScreensF a -> a) -> Screens -> Screens
+runScreens = cata
