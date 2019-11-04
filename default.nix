@@ -3,7 +3,7 @@
 }:
 mkDerivation {
   pname = "xrandr";
-  version = "0.2.0.1";
+  version = "0.2.1.0";
   src = ./.;
   libraryHaskellDepends = [
     attoparsec base recursion-schemes shelly text

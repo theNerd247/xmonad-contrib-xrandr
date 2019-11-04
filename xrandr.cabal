@@ -3,7 +3,7 @@ cabal-version:       2.4
 -- For further documentation, see http://haskell.org/cabal/users-guide/
 
 name:                xrandr
-version:             0.2.0.1
+version:             0.2.1.0
 author:              theNerd247
 maintainer:          noah.harvey247 gm
 -- copyright:
