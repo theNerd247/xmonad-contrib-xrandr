@@ -5,6 +5,7 @@
 module Xrandr.Types.Internal 
   ( Screens
   , ScreenF (..)
+  , ScreenCmd
   , Position (..)
   , Rotation (..)
   , Config (..)
@@ -13,10 +14,8 @@ module Xrandr.Types.Internal
   , Mode (..)
   , modeX
   , modeY
-  , toScreens
   , fromScreens
-  , withScreens 
-  , onAllScreens
+  , toScreens
   )
 where
 
@@ -67,14 +66,10 @@ modeX = fst . modeName
 
 modeY = snd . modeName
 
+type ScreenCmd a = ScreenF a -> ScreenF a
+
 toScreens :: ScreenF Screens -> Screens
 toScreens = Fix
 
-withScreens :: (ScreenF (Screens, a) -> a) -> Screens -> a
-withScreens = para
-
 fromScreens :: (ScreenF a -> a) -> Screens -> a
 fromScreens = cata
-
-onAllScreens :: (ScreenF Screens -> ScreenF Screens) -> Screens -> Screens
-onAllScreens = fromScreens . (toScreens .)

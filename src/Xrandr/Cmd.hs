@@ -37,13 +37,11 @@ instance ToCmd Rotation where
       rotateOption RotateRight = "right"
       rotateOption Inverted    = "inverted"
 
-makeCmd = withScreens makeCommands'
-
-makeCommands' :: ScreenF (Screens, Cmd) -> Cmd
-makeCommands' (Primary n c)                     =         (buildCmd n) <> (buildCmd c) <> ["--primary"]
-makeCommands' (Secondary n c p (screens, cmds)) = cmds <> (buildCmd n) <> (buildCmd c) <> [positionArg p, name $ fromScreens nextOutputName screens]
-makeCommands' (Disabled n _ (_, cmds))          = cmds <> (buildCmd n)                 <> ["--off"]
-makeCommands' (Disconnected n (_, cmds))        = cmds <> (buildCmd n)                 <> ["--off"]
+makeCmd :: ScreenF (OutputName, Cmd) -> (OutputName, Cmd)
+makeCmd (Primary n c)                = (n,         (buildCmd n) <> (buildCmd c) <> ["--primary"])
+makeCmd (Secondary n c p (ln, cmds)) = (n, cmds <> (buildCmd n) <> (buildCmd c) <> [positionArg p, name ln])
+makeCmd (Disabled n _ (_, cmds))     = (n, cmds <> (buildCmd n)                 <> ["--off"])
+makeCmd (Disconnected n (_, cmds))   = (n, cmds <> (buildCmd n)                 <> ["--off"])
 
 positionArg :: Position -> T.Text
 positionArg LeftOf  = "--left-of"
