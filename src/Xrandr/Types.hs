@@ -33,6 +33,7 @@ where
 
 import Control.Arrow
 import Xrandr.Types.Internal
+import Data.EnumCycle
 
 configWithNormalRotation :: Modes -> Config
 configWithNormalRotation = Config Normal
@@ -49,10 +50,10 @@ allScreensRight :: ScreenCmd a
 allScreensRight = modifyPosition $ const RightOf
 
 nextScreenRotation :: OutputName -> ScreenCmd a
-nextScreenRotation n = modifyRotationOfScreen n succ
+nextScreenRotation n = modifyRotationOfScreen n next
 
 prevScreenRotation :: OutputName -> ScreenCmd a
-prevScreenRotation n = modifyRotationOfScreen n pred
+prevScreenRotation n = modifyRotationOfScreen n pre
 
 autoEnable :: ScreenCmd a
 autoEnable (Disabled n c s) = Secondary n c LeftOf s
@@ -72,10 +73,10 @@ modifyConfig :: (Config -> Config) -> ScreenCmd a
 modifyConfig = onSecondary . first
 
 nextScreenPosition :: ScreenCmd a
-nextScreenPosition = modifyPosition succ
+nextScreenPosition = modifyPosition next
 
 prevScreenPosition :: ScreenCmd a
-prevScreenPosition = modifyPosition pred
+prevScreenPosition = modifyPosition pre
 
 modifyPosition :: (Position -> Position) -> ScreenCmd a
 modifyPosition = onSecondary . second

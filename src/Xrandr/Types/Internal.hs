@@ -43,7 +43,7 @@ data Position =
   | Above  
   | Below  
   | SameAs 
-  deriving (Show, Eq, Ord, Enum)
+  deriving (Show, Eq, Ord, Enum, Bounded)
 
 newtype OutputName = OutputName { name :: T.Text } 
   deriving (Show, Eq, Ord, IsString)
@@ -63,7 +63,7 @@ data Rotation =
   | RotateLeft
   | RotateRight
   | Inverted
-  deriving (Show, Eq, Ord, Enum)
+  deriving (Show, Eq, Ord, Enum, Bounded)
 
 modeX = fst . modeName
 
