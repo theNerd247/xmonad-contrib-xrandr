@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+
 
 module Xrandr.Types.Internal 
   ( Screens
@@ -19,6 +21,7 @@ module Xrandr.Types.Internal
   )
 where
 
+import Data.Data
 import Data.Functor.Foldable
 import Data.String (IsString)
 import Data.Zipper
@@ -30,7 +33,7 @@ data ScreenF b =
   | Secondary    OutputName Config Position b
   | Disabled     OutputName Config b
   | Disconnected OutputName b
-  deriving (Show, Functor)
+  deriving (Show, Functor, Typeable)
 
 type Screens = Fix ScreenF
 
