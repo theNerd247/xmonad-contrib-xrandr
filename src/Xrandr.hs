@@ -6,8 +6,10 @@
 
 
 module Xrandr 
-  ( -- runXrandr
-    module Xrandr.Types
+  ( runXrandr
+  , readCurrentScreens
+  , xrandr
+  , xrandr_
   )
 where
 
@@ -22,9 +24,9 @@ import Xrandr.Cmd
 import Xrandr.Types
 import Xrandr.Parser
 
-runXrandr :: (forall a. ScreenCmd a) -> Screens -> IO Screens
+runXrandr :: (forall a. ScreenCmd a) -> Screens -> (Screens, Cmd)
 runXrandr f = 
-    ((xrandr_ . snd . snd) *> (return . fst)) 
+    (second snd) 
   . (fromScreens $ bothAlg (toScreens . f) (makeCmd . f))
 
 readCurrentScreens :: IO (Either String Screens)
