@@ -15,7 +15,7 @@ let
 
   pkgs = import <nixpkgs> { inherit config; };
 
-  ghc = pkgs.haskellPackages.ghcWithPackages (hpkgs: with hpkgs;
+  ghc = pkgs.haskellPackages.ghcWithHoogle (hpkgs: with hpkgs;
     [ cabal-install
     ] ++ xrandr.buildInputs
   );
