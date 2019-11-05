@@ -10,6 +10,7 @@ module Xrandr
   , readCurrentScreens
   , xrandr
   , xrandr_
+  , module Xrandr.Types
   )
 where
 
