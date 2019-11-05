@@ -26,6 +26,7 @@ module Xrandr.Types
   , modifyPosition
   , modifyRotation
   , modifyRotationOfScreen
+  , toScreens
   , fromScreens
   )
 where
