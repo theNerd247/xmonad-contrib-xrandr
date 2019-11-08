@@ -1,13 +1,11 @@
-{ config = 
+{
+  packageOverrides = pkgs: 
   {
-    packageOverrides = pkgs: 
+    haskellPackages = pkgs.haskellPackages.override 
     {
-      haskellPackages = pkgs.haskellPackages.override 
+      overrides = new: old:
       {
-        overrides = new: old:
-        {
-          xrandr = new.callPackage ./default.nix {};
-        };
+        xrandr = new.callPackage ./default.nix {};
       };
     };
   };

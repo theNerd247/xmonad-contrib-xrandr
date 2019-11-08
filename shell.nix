@@ -1,5 +1,5 @@
 let
-  config = (import ./release.nix).config; 
+  config = import ./release.nix; 
 
   pkgs = import <nixpkgs> { inherit config; };
 
