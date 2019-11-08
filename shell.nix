@@ -1,4 +1,6 @@
 let
+  config = (import ./release.nix).config; 
+
   pkgs = import <nixpkgs> { inherit config; };
 
   ghc = pkgs.haskellPackages.ghcWithHoogle (hpkgs: with hpkgs;
@@ -7,6 +9,6 @@ let
   );
 in
 
-mkShell 
+pkgs.mkShell 
 { buildInputs = [ ghc ];
 }
