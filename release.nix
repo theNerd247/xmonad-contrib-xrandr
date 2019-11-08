@@ -1,5 +1,4 @@
-let
-  config = 
+{ config = 
   {
     packageOverrides = pkgs: 
     {
@@ -12,21 +11,4 @@ let
       };
     };
   };
-
-  pkgs = import <nixpkgs> { inherit config; };
-
-  ghc = pkgs.haskellPackages.ghcWithPackages (hpkgs: with hpkgs;
-    [ cabal-install
-    ] ++ xrandr.buildInputs
-  );
-in
-
-with pkgs;
-
-if lib.inNixShell then
-  mkShell 
-  { buildInputs = [ ghc ];
-  }
-else
-{ xrandr = haskellPackages.xrandr;
 }
